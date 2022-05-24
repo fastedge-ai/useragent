@@ -84,7 +84,7 @@ func Parse(userAgent string) UserAgent {
 			}
 		}
 
-	case tokens.exists("iPhone"):
+	case tokens.existsAny("iPhone", "iPhone12,8", "iPhone13,3", "iPhone12,", "iPhone13", "iPhone11", "iPhone10"):
 		ua.OS = IOS
 		ua.OSVersion = tokens.findMacOSVersion()
 		ua.Device = "iPhone"
