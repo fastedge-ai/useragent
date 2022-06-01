@@ -2,23 +2,28 @@ package ua
 
 import (
 	"bytes"
+	"fmt"
 	"regexp"
 	"strings"
 )
 
 // UserAgent struct containing all data extracted from parsed user-agent string
 type UserAgent struct {
-	Name      string
-	Version   string
-	OS        string
-	OSVersion string
-	Device    string
-	Mobile    bool
-	Tablet    bool
-	Desktop   bool
-	Bot       bool
-	URL       string
-	String    string
+	Name        string
+	Version     string
+	OS          string
+	OSVersion   string
+	Device      string
+	Mobile      bool
+	Tablet      bool
+	Desktop     bool
+	Chromecast  bool
+	Roku        bool
+	Kindle      bool
+	Bot         bool
+	PlayStation bool
+	URL         string
+	String      string
 }
 
 var ignore = map[string]struct{}{
@@ -38,6 +43,9 @@ const (
 	IOS          = "iOS"
 	Linux        = "Linux"
 	ChromeOS     = "CrOS"
+	Chromecast   = "CrKey"
+	Roku         = "RokuOS"
+	Playstation  = "Playstation"
 
 	Opera            = "Opera"
 	OperaMini        = "Opera Mini"
@@ -62,7 +70,6 @@ func Parse(userAgent string) UserAgent {
 	}
 
 	tokens := parse(userAgent)
-
 	// check is there URL
 	for k := range tokens {
 		if strings.HasPrefix(k, "http://") || strings.HasPrefix(k, "https://") {
@@ -84,7 +91,7 @@ func Parse(userAgent string) UserAgent {
 			}
 		}
 
-	case tokens.exists("iPhone"):
+	case tokens.existsAny("iPhone", "iPhone8", "iPhone9", "Apple-iPhone7C2/1202.466", "iPhone12", "iPhone13", "iPhone11", "iPhone10"):
 		ua.OS = IOS
 		ua.OSVersion = tokens.findMacOSVersion()
 		ua.Device = "iPhone"
@@ -121,6 +128,25 @@ func Parse(userAgent string) UserAgent {
 		ua.OSVersion = tokens[ChromeOS]
 		ua.Desktop = true
 
+	case tokens.exists("CrKey"):
+		ua.OS = Chromecast
+		ua.OSVersion = tokens[Chromecast]
+		ua.Chromecast = true
+
+	case tokens.existsAny("Roku4640X", "RokuOS", "Roku"):
+		ua.OS = Roku
+		ua.OSVersion = tokens[Roku]
+		ua.Roku = true
+
+	case tokens.exists("Kindle"):
+		ua.OS = Android
+		ua.OSVersion = tokens[Android]
+		ua.Kindle = true
+
+	case tokens.exists("PlayStation"):
+		ua.OS = Playstation
+		ua.OSVersion = tokens[Playstation]
+		ua.PlayStation = true
 	}
 
 	// for s, val := range sys {
@@ -254,7 +280,9 @@ func Parse(userAgent string) UserAgent {
 			ua.Version = tokens["Version"]
 			ua.Mobile = true
 		} else {
-			if name := tokens.findBestMatch(false); name != "" {
+			if ua.OS == "Android" {
+				ua.Name = "Android browser"
+			} else if name := tokens.findBestMatch(false); name != "" {
 				ua.Name = name
 				ua.Version = tokens[name]
 			} else {
@@ -320,11 +348,20 @@ func parse(userAgent string) (clients properties) {
 
 		//fmt.Println(string(c), c)
 		switch {
+		case c == 124: // |
+			addToken()
+
 		case c == 41: // )
 			addToken()
 			parOpen = false
 
 		case parOpen && c == 59: // ;
+			addToken()
+
+		case parOpen && c == 44: // ,
+			addToken()
+
+		case parOpen && c == 47: // /
 			addToken()
 
 		case c == 40: // (
@@ -366,6 +403,10 @@ func checkVer(s string) (name, v string) {
 	case "Linux", "Windows NT", "Windows Phone OS", "MSIE", "Android":
 		return s[:i], s[i+1:]
 	case "CrOS x86_64", "CrOS aarch64":
+		j := strings.LastIndex(s[:i], " ")
+		fmt.Println(j, s[:j], s[j+1:i])
+		return s[:j], s[j+1 : i]
+	case "CrKey armv7l":
 		j := strings.LastIndex(s[:i], " ")
 		return s[:j], s[j+1 : i]
 	default:
@@ -423,7 +464,7 @@ func (p properties) findBestMatch(withVerOnly bool) string {
 	for i := 0; i < n; i++ {
 		for k, v := range p {
 			switch k {
-			case Chrome, Firefox, Safari, "Version", "Mobile", "Mobile Safari", "Mozilla", "AppleWebKit", "Windows NT", "Windows Phone OS", Android, "Macintosh", Linux, "GSA", ChromeOS:
+			case Chrome, Firefox, Safari, "Version", "Mobile", "Mobile Safari", "Mozilla", "AppleWebKit", "Windows NT", "Windows Phone OS", Android, "Macintosh", Linux, "GSA", ChromeOS, Chromecast:
 			default:
 				if i == 0 {
 					if v != "" { // in first check, only return keys with value
