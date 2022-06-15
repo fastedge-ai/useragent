@@ -90,18 +90,17 @@ func Parse(userAgent string) UserAgent {
 				ua.Tablet = strings.Contains(strings.ToLower(ua.Device), "tablet")
 			}
 		}
-
-	case tokens.existsAny("iPhone", "iPhone8", "iPhone9", "Apple-iPhone7C2/1202.466", "iPhone12", "iPhone13", "iPhone11", "iPhone10"):
-		ua.OS = IOS
-		ua.OSVersion = tokens.findMacOSVersion()
-		ua.Device = "iPhone"
-		ua.Mobile = true
-
 	case tokens.exists("iPad"):
 		ua.OS = IOS
 		ua.OSVersion = tokens.findMacOSVersion()
 		ua.Device = "iPad"
 		ua.Tablet = true
+
+	case tokens.contains("iPhone"):
+		ua.OS = IOS
+		ua.OSVersion = tokens.findMacOSVersion()
+		ua.Device = "iPhone"
+		ua.Mobile = true
 
 	case tokens.exists("Windows NT"):
 		ua.OS = Windows
@@ -434,6 +433,15 @@ func (p properties) exists(key string) bool {
 func (p properties) existsAny(keys ...string) bool {
 	for _, k := range keys {
 		if _, ok := p[k]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (p properties) contains(key string) bool {
+	for k := range p {
+		if strings.Contains(k, key) {
 			return true
 		}
 	}
