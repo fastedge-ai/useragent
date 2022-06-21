@@ -142,7 +142,7 @@ func Parse(userAgent string) UserAgent {
 		ua.OSVersion = tokens[Android]
 		ua.Kindle = true
 
-	case tokens.exists("PlayStation"):
+	case tokens.contains("PlayStation"):
 		ua.OS = Playstation
 		ua.OSVersion = tokens[Playstation]
 		ua.PlayStation = true
